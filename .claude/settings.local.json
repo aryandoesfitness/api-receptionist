@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm audit *)",
+      "Bash(npm install *)",
+      "Bash(node --check src/index.js src/routes/calls.js src/routes/clients.js src/services/retell.js src/services/supabase.js src/services/twilio.js src/services/notifications.js src/middleware/validateWebhook.js)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(node --check src/middleware/validateWebhook.js)"
+    ]
+  }
+}
