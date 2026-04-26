@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const validateWebhook = require('../middleware/validateWebhook');
-const { logCall } = require('../services/supabase');
+const { logCall, getClientByAgentId } = require('../services/supabase');
 const { sendSms } = require('../services/twilio');
 const { sendEmailAlert } = require('../services/notifications');
 
@@ -21,7 +21,24 @@ async function processCallAsync(payload) {
   const analysis = call.call_analysis || {};
   const custom = analysis.custom_analysis_data || {};
 
+  const agentId = call.agent_id || null;
+  console.log('[debug] agent_id from payload:', agentId);
+
+  let clientId = null;
+  try {
+    const client = await getClientByAgentId(agentId);
+    console.log('[debug] client lookup result:', client);
+    clientId = client?.id ?? null;
+  } catch (err) {
+    console.error('[debug] client lookup error:', err.message);
+  }
+
+  if (!clientId) {
+    console.warn('[debug] client_id is NULL — no client row matched agent_id:', agentId);
+  }
+
   const callData = {
+    client_id: clientId,
     call_id: call.call_id || null,
     caller_name: custom.caller_name || null,
     caller_phone: custom.caller_phone || null,
