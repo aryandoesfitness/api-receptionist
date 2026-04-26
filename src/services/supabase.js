@@ -72,6 +72,18 @@ async function updateClient(id, clientData) {
   return data ?? null;
 }
 
+async function updateCallByCallId(callId, updates) {
+  const { data, error } = await supabase
+    .from('calls')
+    .update(updates)
+    .eq('call_id', callId)
+    .select()
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return data ?? null;
+}
+
 async function deleteClient(id) {
   const { error } = await supabase
     .from('clients')
@@ -81,4 +93,4 @@ async function deleteClient(id) {
   if (error) throw error;
 }
 
-module.exports = { logCall, getClients, getClientByAgentId, getClientById, createClient, updateClient, deleteClient };
+module.exports = { logCall, updateCallByCallId, getClients, getClientByAgentId, getClientById, createClient, updateClient, deleteClient };

@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const validateWebhook = require('../middleware/validateWebhook');
-const { logCall, getClientByAgentId } = require('../services/supabase');
+const { logCall, updateCallByCallId, getClientByAgentId } = require('../services/supabase');
 const { sendSms } = require('../services/twilio');
 const { sendEmailAlert } = require('../services/notifications');
 
 router.post('/process', validateWebhook, (req, res) => {
-  // Acknowledge immediately so Retell doesn't retry
   res.status(200).json({ received: true });
 
   processCallAsync(req.body).catch((err) =>
@@ -15,12 +14,20 @@ router.post('/process', validateWebhook, (req, res) => {
 });
 
 async function processCallAsync(payload) {
-  if (!payload || payload.event !== 'call_ended') return;
+  if (!payload) return;
 
-  const call = payload.call || {};
-  const analysis = call.call_analysis || {};
-  const custom = analysis.custom_analysis_data || {};
+  console.log('[calls] event received:', payload.event);
 
+  if (payload.event === 'call_ended') {
+    await handleCallEnded(payload.call || {});
+  } else if (payload.event === 'call_analyzed') {
+    await handleCallAnalyzed(payload.call || {});
+  } else {
+    console.log('[calls] unhandled event type, ignoring:', payload.event);
+  }
+}
+
+async function handleCallEnded(call) {
   const agentId = call.agent_id || null;
   console.log('[debug] agent_id from payload:', agentId);
 
@@ -38,16 +45,9 @@ async function processCallAsync(payload) {
   }
 
   const callData = {
-    client_id: clientId,
     call_id: call.call_id || null,
-    caller_name: custom.caller_name || null,
-    caller_phone: custom.caller_phone || null,
-    preferred_day: custom.preferred_day || null,
-    preferred_time: custom.preferred_time || null,
-    reason_for_visit: custom.reason_for_visit || null,
-    appointment_booked: custom.appointment_booked ?? false,
-    sentiment: analysis.user_sentiment || null,
-    summary: analysis.call_summary || null,
+    client_id: clientId,
+    transcript: call.transcript || null,
     duration_ms:
       call.end_timestamp && call.start_timestamp
         ? call.end_timestamp - call.start_timestamp
@@ -58,19 +58,58 @@ async function processCallAsync(payload) {
   try {
     await logCall(callData);
   } catch (err) {
-    console.error('[calls] Supabase logCall failed:', err.message);
+    console.error('[calls] logCall failed:', err.message);
+  }
+}
+
+async function handleCallAnalyzed(call) {
+  const callId = call.call_id || null;
+  if (!callId) {
+    console.error('[calls] call_analyzed payload missing call_id');
+    return;
   }
 
-  if (callData.caller_phone) {
+  const analysis = call.call_analysis || {};
+  const custom = analysis.custom_analysis_data || {};
+
+  console.log('[calls] call_analyzed — raw call_analysis:', JSON.stringify(analysis, null, 2));
+  console.log('[calls] call_analyzed — raw custom_analysis_data:', JSON.stringify(custom, null, 2));
+
+  const updates = {
+    caller_name: custom.caller_name || null,
+    caller_phone: custom.caller_phone || null,
+    reason_for_visit: custom.reason_for_visit || null,
+    preferred_day: custom.preferred_day || null,
+    preferred_time: custom.preferred_time || null,
+    appointment_booked: custom.appointment_booked ?? false,
+    sentiment: analysis.user_sentiment || null,
+    summary: analysis.call_summary || null,
+  };
+
+  console.log('[calls] call_analyzed — fields being written to Supabase:', JSON.stringify(updates, null, 2));
+
+  let updatedCall = null;
+  try {
+    updatedCall = await updateCallByCallId(callId, updates);
+    if (!updatedCall) {
+      console.warn('[calls] call_analyzed: no call row found for call_id:', callId);
+    }
+  } catch (err) {
+    console.error('[calls] updateCallByCallId failed:', err.message);
+  }
+
+  if (!updatedCall) return;
+
+  if (updatedCall.caller_phone) {
     try {
-      await sendSms(callData.caller_phone, buildSmsMessage(callData));
+      await sendSms(updatedCall.caller_phone, buildSmsMessage(updatedCall));
     } catch (err) {
       console.error('[calls] SMS send failed:', err.message);
     }
   }
 
   try {
-    await sendEmailAlert(callData);
+    await sendEmailAlert(updatedCall);
   } catch (err) {
     console.error('[calls] Email alert failed:', err.message);
   }
@@ -79,9 +118,7 @@ async function processCallAsync(payload) {
 function buildSmsMessage(data) {
   const name = data.caller_name || 'there';
   if (data.appointment_booked) {
-    const when = [data.preferred_day, data.preferred_time]
-      .filter(Boolean)
-      .join(' at ');
+    const when = [data.preferred_day, data.preferred_time].filter(Boolean).join(' at ');
     return `Hi ${name}! Your appointment has been scheduled${when ? ` for ${when}` : ''}. We look forward to seeing you. Reply STOP to unsubscribe.`;
   }
   return `Hi ${name}! Thanks for calling. Our team will follow up with you shortly. Reply STOP to unsubscribe.`;
