@@ -12,13 +12,18 @@ function getClient() {
   return client;
 }
 
+function formatAustralianPhone(number) {
+  return number.replace(/\s+/g, '').replace(/^0/, '+61');
+}
+
 async function sendSms(to, body) {
+  const formatted = formatAustralianPhone(to);
   const message = await getClient().messages.create({
     body,
     from: process.env.TWILIO_PHONE_NUMBER,
-    to,
+    to: formatted,
   });
   return message.sid;
 }
 
-module.exports = { sendSms };
+module.exports = { sendSms, formatAustralianPhone };
