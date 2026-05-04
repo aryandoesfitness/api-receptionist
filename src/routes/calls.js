@@ -117,11 +117,7 @@ async function handleCallAnalyzed(call) {
 
 function buildSmsMessage(data) {
   const name = data.caller_name || 'there';
-  if (data.appointment_booked) {
-    const when = [data.preferred_day, data.preferred_time].filter(Boolean).join(' at ');
-    return `Hi ${name}! Your appointment has been scheduled${when ? ` for ${when}` : ''}. We look forward to seeing you. Reply STOP to unsubscribe.`;
-  }
-  return `Hi ${name}! Thanks for calling. Our team will follow up with you shortly. Reply STOP to unsubscribe.`;
+  return `Hi ${name}! Thanks for calling The Dentl Studio. Our team will be in touch shortly to confirm your appointment. Reply STOP to unsubscribe.`;
 }
 
 module.exports = router;
