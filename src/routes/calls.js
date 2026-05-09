@@ -115,6 +115,31 @@ async function handleCallAnalyzed(call) {
   }
 }
 
+router.post('/call-start', (_req, res) => {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+  const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const timeVal = hour * 60 + minute;
+
+  // Clinic hours in minutes since midnight
+  const hours = {
+    1: { open: 8 * 60,  close: 17 * 60 }, // Mon
+    2: { open: 8 * 60,  close: 17 * 60 }, // Tue
+    3: { open: 8 * 60,  close: 17 * 60 }, // Wed
+    4: { open: 9 * 60,  close: 18 * 60 }, // Thu
+    5: { open: 9 * 60,  close: 18 * 60 }, // Fri
+    6: { open: 9 * 60,  close: 13 * 60 }, // Sat
+  };
+
+  const todayHours = hours[day];
+  const isOpen = todayHours && timeVal >= todayHours.open && timeVal < todayHours.close;
+
+  const callback_message = isOpen ? 'usually within the hour' : 'first thing when we open';
+
+  res.status(200).json({ callback_message });
+});
+
 function buildSmsMessage(data) {
   const name = data.caller_name || 'there';
   return `Hi ${name}! Thanks for calling The Dentl Studio. Our team will be in touch shortly to confirm your appointment. Reply STOP to unsubscribe.`;
