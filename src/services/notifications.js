@@ -19,8 +19,7 @@ function buildEmailHtml(data) {
         ${row('Reason for Visit', data.reason_for_visit)}
         ${row('Preferred Day', data.preferred_day)}
         ${row('Preferred Time', data.preferred_time)}
-        ${row('Appointment Booked', data.appointment_booked ? 'Yes' : 'No')}
-        ${row('Sentiment', data.sentiment)}
+${row('Sentiment', data.sentiment)}
         ${row('Summary', data.summary)}
       </table>
     </div>
