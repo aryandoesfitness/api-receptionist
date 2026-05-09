@@ -1,29 +1,6 @@
-const nodemailer = require('nodemailer');
-const dns = require('dns');
+const { Resend } = require('resend');
 
-let transporter;
-
-function getTransporter() {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: false,
-      family: 4,
-      lookup: (hostname, options, callback) => {
-        dns.resolve4(hostname, (err, addresses) => {
-          if (err) return callback(err);
-          callback(null, addresses[0], 4);
-        });
-      },
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
-  return transporter;
-}
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 function row(label, value) {
   return `<tr>
@@ -57,8 +34,8 @@ async function sendEmailAlert(callData) {
   const callerLabel = callData.caller_name || 'Unknown Caller';
   const reasonLabel = callData.reason_for_visit || 'Inquiry';
 
-  await getTransporter().sendMail({
-    from: `"AI Receptionist" <${process.env.SMTP_USER}>`,
+  await resend.emails.send({
+    from: 'AI Receptionist <onboarding@resend.dev>',
     to,
     subject: `New Lead: ${callerLabel} — ${reasonLabel}`,
     html: buildEmailHtml(callData),
