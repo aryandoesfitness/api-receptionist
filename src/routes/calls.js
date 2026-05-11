@@ -79,7 +79,7 @@ async function handleCallAnalyzed(call) {
     caller_name: custom.caller_name || null,
     caller_phone: custom.caller_phone || null,
     reason_for_visit: custom.reason_for_visit || null,
-    preferred_times: custom.preferred_times || null,
+    preferred_times: custom.preferred_day && custom.preferred_time ? `${custom.preferred_day} ${custom.preferred_time}` : custom.preferred_day || custom.preferred_time || null,
     appointment_booked: custom.appointment_booked ?? false,
     sentiment: analysis.user_sentiment || null,
     summary: analysis.call_summary || null,
