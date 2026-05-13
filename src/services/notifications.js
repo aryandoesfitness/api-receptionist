@@ -17,6 +17,7 @@ function buildEmailHtml(data) {
         ${row('Caller Name', data.caller_name)}
         ${row('Phone', data.caller_phone)}
         ${row('Reason for Visit', data.reason_for_visit)}
+        ${row('Date of Birth', data.date_of_birth)}
         ${row('Preferred Times', data.preferred_times)}
 ${row('Sentiment', data.sentiment)}
         ${row('Summary', data.summary)}
